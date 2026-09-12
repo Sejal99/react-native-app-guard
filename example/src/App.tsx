@@ -1,12 +1,45 @@
-import { Text, View, StyleSheet } from 'react-native';
-import { multiply } from 'react-native-app-guard';
-
-const result = multiply(3, 7);
+import { useState } from 'react';
+import { Text, View, StyleSheet, Button } from 'react-native';
+import AppGuard from 'react-native-app-guard';
 
 export default function App() {
+  const [rootStatus, setRootStatus] = useState<string>('Not checked');
+  const [recordingStatus, setRecordingStatus] = useState<string>('Not checked');
+  const [screenshotBlocked, setScreenshotBlockedState] =
+    useState<boolean>(false);
+
+  const checkRoot = () => {
+    const result = AppGuard.isDeviceRooted();
+    setRootStatus(result ? 'ROOTED' : 'Not rooted');
+  };
+
+  const checkRecording = () => {
+    const result = AppGuard.isScreenRecording();
+    setRecordingStatus(result ? 'Recording detected' : 'Not recording');
+  };
+
+  const toggleScreenshotBlock = () => {
+    const newValue = !screenshotBlocked;
+    AppGuard.setScreenshotBlocked(newValue);
+    setScreenshotBlockedState(newValue);
+  };
+
   return (
     <View style={styles.container}>
-      <Text>Result: {result}</Text>
+      <Text style={styles.label}>Root status: {rootStatus}</Text>
+      <Button title="Check Root" onPress={checkRoot} />
+
+      <View style={styles.spacer} />
+
+      <Text style={styles.label}>Recording status: {recordingStatus}</Text>
+      <Button title="Check Recording" onPress={checkRecording} />
+
+      <View style={styles.spacer} />
+
+      <Text style={styles.label}>
+        Screenshot blocked: {screenshotBlocked ? 'YES' : 'NO'}
+      </Text>
+      <Button title="Toggle Screenshot Block" onPress={toggleScreenshotBlock} />
     </View>
   );
 }
@@ -16,5 +49,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  label: {
+    marginBottom: 10,
+    fontSize: 16,
+  },
+  spacer: {
+    height: 30,
   },
 });

@@ -1,1 +1,1 @@
-export { multiply } from './multiply';
+export { default } from './NativeAppGuard';
