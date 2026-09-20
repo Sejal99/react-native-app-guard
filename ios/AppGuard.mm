@@ -1,20 +1,147 @@
 #import "AppGuard.h"
+#import <UIKit/UIKit.h>
+
+static const NSInteger kAppGuardSecureFieldTag = 784213;
 
 @implementation AppGuard
-- (NSNumber *)multiply:(double)a b:(double)b {
-    NSNumber *result = @(a * b);
 
-    return result;
+- (NSNumber *)isDeviceRooted {
+  return @([self checkJailbreakPaths] || [self checkSandboxViolation]);
+}
+
+- (void)setScreenshotBlocked:(BOOL)blocked {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *window = [UIApplication sharedApplication].windows.firstObject;
+        if (!window) return;
+
+        static UIView *secureOverlay = nil;
+
+        if (blocked) {
+            if (!secureOverlay) {
+                secureOverlay = [[UIView alloc] initWithFrame:window.bounds];
+                secureOverlay.backgroundColor = [UIColor blackColor];
+                secureOverlay.tag = 999888;
+            }
+
+            // Listen for capture state changes (recording start/stop)
+            [[NSNotificationCenter defaultCenter] addObserverForName:UIScreenCapturedDidChangeNotification
+                                                               object:nil
+                                                                queue:[NSOperationQueue mainQueue]
+                                                           usingBlock:^(NSNotification * _Nonnull note) {
+                if ([UIScreen mainScreen].isCaptured) {
+                    if (![window.subviews containsObject:secureOverlay]) {
+                        secureOverlay.frame = window.bounds;
+                        [window addSubview:secureOverlay];
+                    }
+                } else {
+                    [secureOverlay removeFromSuperview];
+                }
+            }];
+        } else {
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:UIScreenCapturedDidChangeNotification object:nil];
+            if (secureOverlay) {
+                [secureOverlay removeFromSuperview];
+            }
+        }
+    });
+}
+
+- (void)setScreenshotBlocked:(BOOL)blocked {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    UIWindow *window = [self topWindow];
+    if (window == nil) {
+      return;
+    }
+    UIView *secureField = [window viewWithTag:kAppGuardSecureFieldTag];
+    if (blocked) {
+      if (secureField != nil) {
+        return;
+      }
+      // A UITextField with secureTextEntry enabled makes iOS blank the whole
+      // window in screenshots and screen recordings. This is the only
+      // supported way to hide content on iOS.
+      UITextField *textField = [[UITextField alloc] init];
+      textField.tag = kAppGuardSecureFieldTag;
+      textField.secureTextEntry = YES;
+      textField.userInteractionEnabled = NO;
+      textField.accessibilityElementsHidden = YES;
+      textField.frame = window.bounds;
+      textField.autoresizingMask =
+        UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+      [window addSubview:textField];
+      [window sendSubviewToBack:textField];
+    } else {
+      [secureField removeFromSuperview];
+    }
+  });
+}
+
+// Common jailbreak-related file paths
+- (BOOL)checkJailbreakPaths {
+  NSArray<NSString *> *paths = @[
+    @"/Applications/Cydia.app",
+    @"/Applications/Sileo.app",
+    @"/Library/MobileSubstrate/MobileSubstrate.dylib",
+    @"/usr/libexec/ssh-keysh",
+    @"/bin/bash",
+    @"/usr/sbin/sshd",
+    @"/etc/apt",
+    @"/private/var/lib/apt/"
+  ];
+
+  for (NSString *path in paths) {
+    if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+      return YES;
+    }
+  }
+  return NO;
+}
+
+// Try writing outside the app's sandbox — only possible on jailbroken devices
+- (BOOL)checkSandboxViolation {
+  NSString *testPath = @"/private/jailbreak_test.txt";
+  NSString *testString = @"test";
+  NSError *error = nil;
+
+  [testString writeToFile:testPath
+               atomically:YES
+                 encoding:NSUTF8StringEncoding
+                    error:&error];
+
+  if (error == nil) {
+    [[NSFileManager defaultManager] removeItemAtPath:testPath error:nil];
+    return YES;
+  }
+  return NO;
+}
+
+- (UIWindow *)topWindow {
+  if (@available(iOS 13.0, *)) {
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+      if ([scene isKindOfClass:UIWindowScene.class]) {
+        UIWindowScene *windowScene = (UIWindowScene *)scene;
+        if (windowScene.activationState ==
+            UISceneActivationStateForegroundActive) {
+          for (UIWindow *window in windowScene.windows) {
+            if (window.isKeyWindow) {
+              return window;
+            }
+          }
+        }
+      }
+    }
+    return nil;
+  } else {
+    return UIApplication.sharedApplication.keyWindow;
+  }
 }
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
-    (const facebook::react::ObjCTurboModule::InitParams &)params
-{
-    return std::make_shared<facebook::react::NativeAppGuardSpecJSI>(params);
+    (const facebook::react::ObjCTurboModule::InitParams &)params {
+  return std::make_shared<facebook::react::NativeAppGuardSpecJSI>(params);
 }
 
-+ (NSString *)moduleName
-{
++ (NSString *)moduleName {
   return @"AppGuard";
 }
 
