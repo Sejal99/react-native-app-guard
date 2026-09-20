@@ -7,6 +7,7 @@ export default function App() {
   const [recordingStatus, setRecordingStatus] = useState<string>('Not checked');
   const [screenshotBlocked, setScreenshotBlockedState] =
     useState<boolean>(false);
+  const [emulatorStatus, setEmulatorStatus] = useState<string>('Not checked');
 
   const checkRoot = () => {
     const result = AppGuard.isDeviceRooted();
@@ -22,6 +23,11 @@ export default function App() {
     const newValue = !screenshotBlocked;
     AppGuard.setScreenshotBlocked(newValue);
     setScreenshotBlockedState(newValue);
+  };
+
+  const checkEmulator = () => {
+    const result = AppGuard.isEmulator();
+    setEmulatorStatus(result ? 'EMULATOR' : 'Real device');
   };
 
   return (
@@ -40,6 +46,11 @@ export default function App() {
         Screenshot blocked: {screenshotBlocked ? 'YES' : 'NO'}
       </Text>
       <Button title="Toggle Screenshot Block" onPress={toggleScreenshotBlock} />
+
+      <View style={styles.spacer} />
+
+      <Text style={styles.label}>Emulator status: {emulatorStatus}</Text>
+      <Button title="Check Emulator" onPress={checkEmulator} />
     </View>
   );
 }

@@ -18,6 +18,35 @@ class AppGuardModule(reactContext: ReactApplicationContext) :
     return checkRootBinaries() || checkTestKeys() || checkRootPackages()
   }
 
+  override fun isEmulator(): Boolean {
+    val fingerprint = Build.FINGERPRINT
+    val model = Build.MODEL
+    val manufacturer = Build.MANUFACTURER
+    val brand = Build.BRAND
+    val device = Build.DEVICE
+    val product = Build.PRODUCT
+    val hardware = Build.HARDWARE
+
+    return fingerprint.contains("generic") ||
+      fingerprint.contains("emulator") ||
+      fingerprint.contains("goldfish") ||
+      fingerprint.contains("ranchu") ||
+      fingerprint.contains("emu") ||
+      model.contains("Emulator", ignoreCase = true) ||
+      model.contains("sdk", ignoreCase = true) ||
+      model.contains("Android SDK built for", ignoreCase = true) ||
+      manufacturer.contains("Genymotion", ignoreCase = true) ||
+      (brand.startsWith("generic") && device.startsWith("generic")) ||
+      hardware.contains("goldfish") ||
+      hardware.contains("ranchu") ||
+      hardware.contains("emulator") ||
+      hardware.contains("qemu") ||
+      product == "google_sdk" ||
+      product.contains("sdk") ||
+      device.contains("emu") ||
+      device.startsWith("generic")
+  }
+
 override fun isScreenRecording(): Boolean {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
       val windowManager = reactApplicationContext

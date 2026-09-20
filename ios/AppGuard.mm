@@ -1,8 +1,6 @@
 #import "AppGuard.h"
 #import <UIKit/UIKit.h>
 
-static const NSInteger kAppGuardSecureFieldTag = 784213;
-
 @implementation AppGuard
 
 - (NSNumber *)isDeviceRooted {
@@ -46,36 +44,6 @@ static const NSInteger kAppGuardSecureFieldTag = 784213;
     });
 }
 
-- (void)setScreenshotBlocked:(BOOL)blocked {
-  dispatch_async(dispatch_get_main_queue(), ^{
-    UIWindow *window = [self topWindow];
-    if (window == nil) {
-      return;
-    }
-    UIView *secureField = [window viewWithTag:kAppGuardSecureFieldTag];
-    if (blocked) {
-      if (secureField != nil) {
-        return;
-      }
-      // A UITextField with secureTextEntry enabled makes iOS blank the whole
-      // window in screenshots and screen recordings. This is the only
-      // supported way to hide content on iOS.
-      UITextField *textField = [[UITextField alloc] init];
-      textField.tag = kAppGuardSecureFieldTag;
-      textField.secureTextEntry = YES;
-      textField.userInteractionEnabled = NO;
-      textField.accessibilityElementsHidden = YES;
-      textField.frame = window.bounds;
-      textField.autoresizingMask =
-        UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-      [window addSubview:textField];
-      [window sendSubviewToBack:textField];
-    } else {
-      [secureField removeFromSuperview];
-    }
-  });
-}
-
 // Common jailbreak-related file paths
 - (BOOL)checkJailbreakPaths {
   NSArray<NSString *> *paths = @[
@@ -95,6 +63,14 @@ static const NSInteger kAppGuardSecureFieldTag = 784213;
     }
   }
   return NO;
+}
+
+- (NSNumber *)isEmulator {
+#if TARGET_OS_SIMULATOR
+    return @YES;
+#else
+    return @NO;
+#endif
 }
 
 // Try writing outside the app's sandbox — only possible on jailbroken devices
